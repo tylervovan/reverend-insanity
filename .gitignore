@@ -7,3 +7,5 @@ fetch.log
 
 # scratch
 fetch.log
+__pycache__/
+*.pyc
