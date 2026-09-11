@@ -21,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ri_parse import parse_document, to_markdown  # noqa: E402
+from volumes import folder_name, volume_of  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(ROOT, "raw")
@@ -69,18 +70,24 @@ def fetch(url):
 _existing = set()
 
 
+def volume_dir(n):
+    vol, _lo, _hi, title = volume_of(n)
+    d = os.path.join(OUT, folder_name(vol, title))
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
 def existing_md(n):
-    if n not in _existing:
-        return None
-    return f"{n:04d}"  # marker; path already validated at startup
+    return f"{n:04d}" if n in _existing else None
 
 
 def load_existing():
-    """One listdir instead of per-chapter scans (2334 chapters would be O(n^2))."""
-    for f in os.listdir(OUT):
-        m = re.match(r"^(\d{4})-", f)
-        if m and os.path.getsize(os.path.join(OUT, f)) > 500:
-            _existing.add(int(m.group(1)))
+    """One walk instead of per-chapter scans (2334 chapters would be O(n^2))."""
+    for dirpath, _dirs, files in os.walk(OUT):
+        for f in files:
+            m = re.match(r"^(\d{4})-", f)
+            if m and os.path.getsize(os.path.join(dirpath, f)) > 500:
+                _existing.add(int(m.group(1)))
     print(f"already downloaded: {len(_existing)}", flush=True)
 
 
@@ -119,7 +126,7 @@ def do_chapter(entry):
         return n, "fail", f"thin ({words} words)"
 
     md = to_markdown(n, title, blocks, entry["url"], time.strftime("%Y-%m-%d"))
-    path = os.path.join(OUT, slug(title, n))
+    path = os.path.join(volume_dir(n), slug(title, n))
     with open(path, "w", encoding="utf-8") as f:
         f.write(md)
     with _lock:

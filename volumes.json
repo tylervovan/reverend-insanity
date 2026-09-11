@@ -1,0 +1,50 @@
+[
+ {
+  "volume": 1,
+  "first": 1,
+  "last": 199,
+  "title": "A Demon's Nature Doesn't Change",
+  "folder": "vol-01-a-demon-s-nature-doesn-t-change",
+  "chapters": 199
+ },
+ {
+  "volume": 2,
+  "first": 200,
+  "last": 405,
+  "title": "The Demon Leaves the Mountain",
+  "folder": "vol-02-the-demon-leaves-the-mountain",
+  "chapters": 206
+ },
+ {
+  "volume": 3,
+  "first": 406,
+  "last": 649,
+  "title": "The Demon Wreaks Chaos in the World",
+  "folder": "vol-03-the-demon-wreaks-chaos-in-the-world",
+  "chapters": 244
+ },
+ {
+  "volume": 4,
+  "first": 650,
+  "last": 1021,
+  "title": "The Demon Lord Rampages Unhindered",
+  "folder": "vol-04-the-demon-lord-rampages-unhindered",
+  "chapters": 372
+ },
+ {
+  "volume": 5,
+  "first": 1022,
+  "last": 1966,
+  "title": "Demon King's Domination",
+  "folder": "vol-05-demon-king-s-domination",
+  "chapters": 945
+ },
+ {
+  "volume": 6,
+  "first": 1967,
+  "last": 2334,
+  "title": "Demon Venerable's Eternal Life",
+  "folder": "vol-06-demon-venerable-s-eternal-life",
+  "chapters": 368
+ }
+]

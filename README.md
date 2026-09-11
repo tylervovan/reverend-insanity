@@ -10,12 +10,32 @@ machine without touching the site again.
 
 | Path | What it is |
 | --- | --- |
-| `chapters/0001-slug.md` | one markdown file per chapter, with source URL + fetch date in front-matter |
-| `reverend-insanity.md` | the whole novel concatenated — good for Ctrl-F across all 5M+ words |
+| `chapters/vol-0N-.../` | one markdown file per chapter, grouped into the novel's 6 volumes; each file carries source URL + fetch date in front-matter |
+| `reverend-insanity.md` | the whole novel concatenated — good for Ctrl-F across all 4.85M words |
 | `reverend-insanity.epub` | EPUB 3, opens in Apple Books / Calibre / KOReader / any e-reader |
-| `INDEX.md` | clickable chapter list |
+| `INDEX.md` | clickable chapter list, grouped by volume |
 | `manifest.json` | the scraped chapter list (number, title, URL) — the source of truth for "did we get everything" |
+| `volumes.json` | the 6 volume boundaries and their folders |
 | `scripts/` | the tooling: manifest scraper, chapter downloader, parser, compile, verifier |
+
+## Volumes
+
+Chapters are organised by volume; boundaries from the
+[RI Wiki volumes page](https://reverend-insanity.fandom.com/wiki/Volumes) (its table has exactly
+2,334 rows, matching this backup).
+
+| Volume | Chapters | Title |
+| --- | --- | --- |
+| 1 | 1–199 | A Demon's Nature Doesn't Change |
+| 2 | 200–405 | The Demon Leaves the Mountain |
+| 3 | 406–649 | The Demon Wreaks Chaos in the World |
+| 4 | 650–1021 | The Demon Lord Rampages Unhindered |
+| 5 | 1022–1966 | Demon King's Domination |
+| 6 | 1967–2334 | Demon Venerable's Eternal Life |
+
+The split also works around a GitHub quirk: the web UI truncates any directory listing at 1,000
+entries, so a flat `chapters/` folder looked like it stopped at chapter 1,000. The largest volume
+folder holds 945 files.
 
 `raw/` (the scraped HTML) is scratch data, gitignored, and deleted after parsing — the markdown
 is the artifact.

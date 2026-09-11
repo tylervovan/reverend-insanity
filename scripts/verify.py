@@ -26,18 +26,27 @@ UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.3
 
 def load_local():
     got = {}
-    for f in sorted(os.listdir(CH)):
-        m = re.match(r"^(\d{4})-(.*)\.md$", f)
-        if not m:
-            continue
-        n = int(m.group(1))
-        text = open(os.path.join(CH, f), encoding="utf-8").read()
-        body = re.sub(r"^---\n.*?\n---\n", "", text, flags=re.S)
-        body = re.sub(r"^#\s+Chapter.*$", "", body, count=1, flags=re.M).strip()
-        paras = [p.strip() for p in re.split(r"\n\s*\n", body) if p.strip()]
-        got[n] = {"file": f, "paras": paras, "words": sum(len(p.split()) for p in paras),
-                  "size": len(text)}
+    for dirpath, _dirs, files in os.walk(CH):
+        for f in sorted(files):
+            m = re.match(r"^(\d{4})-(.*)\.md$", f)
+            if not m:
+                continue
+            n = int(m.group(1))
+            text = open(os.path.join(dirpath, f), encoding="utf-8").read()
+            body = re.sub(r"^---\n.*?\n---\n", "", text, flags=re.S)
+            body = re.sub(r"^#\s+Chapter.*$", "", body, count=1, flags=re.M).strip()
+            paras = [p.strip() for p in re.split(r"\n\s*\n", body) if p.strip()]
+            got[n] = {"file": os.path.relpath(os.path.join(dirpath, f), ROOT),
+                      "paras": paras, "words": sum(len(p.split()) for p in paras),
+                      "size": len(text)}
     return got
+
+
+def all_chapter_files():
+    out = []
+    for dirpath, _dirs, files in os.walk(CH):
+        out += [os.path.join(dirpath, f) for f in files if f.endswith(".md")]
+    return out
 
 
 def main():
@@ -48,8 +57,12 @@ def main():
 
     missing = [n for n in want if n not in local]
     extra = [n for n in local if n not in want]
-    dupes = [n for n in local if len([1 for f in os.listdir(CH)
-                                     if f.startswith(f"{n:04d}-")]) > 1]
+    dupes = []
+    seen_nums = {}
+    for p in all_chapter_files():
+        n = int(os.path.basename(p)[:4])
+        seen_nums.setdefault(n, []).append(p)
+    dupes = sorted(n for n, ps in seen_nums.items() if len(ps) > 1)
     thin = sorted(n for n, c in local.items() if c["words"] < 300)
     words = sum(c["words"] for c in local.values())
     wc = sorted(c["words"] for c in local.values())
