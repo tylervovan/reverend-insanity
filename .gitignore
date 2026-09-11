@@ -1,0 +1,9 @@
+# raw scraped HTML is scratch data, not part of the backup
+raw/
+*.html
+*.part
+failures.json
+fetch.log
+
+# scratch
+fetch.log
