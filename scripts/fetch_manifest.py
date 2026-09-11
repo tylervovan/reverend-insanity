@@ -1,81 +1,81 @@
 #!/usr/bin/env python3
-"""Fetch the chapter manifest for Reverend Insanity from Novel Phoenix.
+"""Fetch the chapter manifest for the configured novel, into manifest.json.
 
-Writes manifest.json: [{num, title, url}]. Since chapter URLs are strictly
-sequential (/chapter-N), validation only needs to confirm the numbers shown on
-each index page cover 1..max without holes.
+The manifest (source, number, title, URL) is the source of truth for "did we get
+everything". Chapter URLs are sequential, so validation is just: the numbers seen
+cover min..max with no holes.
+
+  python3 scripts/fetch_manifest.py [--source NAME]
+
+With several mirrors configured, `--source` picks one; the orchestrator passes the
+first one that actually responds. The chosen source is recorded in manifest.json so
+the downloader and verifier keep using the same site.
 """
+import argparse
 import json
-import re
+import os
 import sys
-import urllib.request
+import time
 
-BASE = "https://novelphoenix.com"
-SLUG = "reverend-insanity"
-UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 (personal-reading-backup; contact tylervovan)"
-
-ENTRY = re.compile(
-    r'href="(?:https://novelphoenix\.com)?/novel/'
-    + SLUG
-    + r'/chapter-(\d+)"[^>]*>(.*?)</a>',
-    re.S,
-)
-
-
-def get(url):
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return r.read().decode("utf-8", "replace")
-
-
-def clean(s):
-    s = re.sub(r"<[^>]+>", " ", s)
-    s = s.replace("&amp;", "&").replace("&#39;", "'").replace("&quot;", '"')
-    s = s.replace("&nbsp;", " ").replace("&mdash;", "\u2014")
-    return re.sub(r"\s+", " ", s).strip()
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+from common import UA, clean_text, fetch_url, write_json_atomic  # noqa: E402
+from novel_config import load_config  # noqa: E402
 
 
 def main():
-    seen, order = {}, []
-    page = 1
-    while True:
-        url = f"{BASE}/novel/{SLUG}/chapters?page={page}"
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--source", help="mirror name to scrape (default: first configured)")
+    args = ap.parse_args()
+
+    cfg = load_config()
+    src = cfg.source(args.source)
+    entry = src.chapter_regex()
+    print(f"{cfg.title}: scraping {src.name} index at {src.novel_url()}/chapters",
+          file=sys.stderr)
+
+    seen, page = {}, 1
+    while page <= 400:
         try:
-            html = get(url)
-        except Exception as e:
+            html = fetch_url(src.index_url(page), ua=UA)
+        except Exception as e:                                        # noqa: BLE001
             print(f"page {page} failed: {e}", file=sys.stderr)
+            if page == 1:
+                raise SystemExit(f"could not reach {src.index_url(1)} — source down?")
             break
-        hits = ENTRY.findall(html)
+        hits = entry.findall(html)
         if not hits:
             break
         new = 0
         for num, raw in hits:
             n = int(num)
             if n not in seen:
-                seen[n] = clean(raw)
-                order.append(n)
+                seen[n] = clean_text(raw)
                 new += 1
-        print(f"page {page}: {len(hits)} links, {new} new", file=sys.stderr)
+        print(f"  page {page}: {len(hits)} links, {new} new", file=sys.stderr)
         if new == 0:
             break
         page += 1
-        if page > 60:
-            break
 
-    out = []
-    for n in sorted(seen):
-        t = re.sub(r"^\s*Chapter\s+%d\s*[-:\u2013]?\s*" % n, "", seen[n]).strip()
-        out.append({"num": n, "title": seen[n], "subtitle": t,
-                    "url": f"{BASE}/novel/{SLUG}/chapter-{n}"})
+    if not seen:
+        raise SystemExit(f"{src.name}: no chapters found at {src.index_url(1)}")
 
-    with open("manifest.json", "w", encoding="utf-8") as f:
-        json.dump(out, f, ensure_ascii=False, indent=1)
+    chapters = [{"num": n, "title": seen[n], "url": src.chapter_url(n)} for n in sorted(seen)]
+    write_json_atomic(cfg.manifest_path, {
+        "source": src.name,
+        "base": src.base,
+        "profile": src.profile,
+        "fetched": time.strftime("%Y-%m-%d %H:%M"),
+        "chapters": chapters,
+    })
 
     nums = sorted(seen)
-    print(f"\nchapters: {len(nums)}  min={nums[0]}  max={nums[-1]}")
-    missing = [n for n in range(nums[0], nums[-1] + 1) if n not in seen]
-    print(f"holes in sequence: {len(missing)} {missing[:20]}")
-    print("sample:", json.dumps(out[:2], ensure_ascii=False)[:300])
+    holes = [n for n in range(nums[0], nums[-1] + 1) if n not in seen]
+    print(f"\n{cfg.title} via {src.name}: {len(nums)} chapters, {nums[0]}..{nums[-1]}")
+    print(f"holes in sequence: {len(holes)} {holes[:20]}")
+    if holes:
+        print("NOTE: holes are real — re-run to fill them (often page-load hiccups)")
+    print(f"wrote {cfg.manifest_path}")
 
 
 if __name__ == "__main__":
